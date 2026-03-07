@@ -20,7 +20,11 @@ import {
     beatTime,
     pattern,
     patternIndex,
-    hand
+    hand,
+    dwellBeats,
+    IN_AIR,
+    LANDED_WAIT,
+    READY
 } from './logic.js';
 
 // Bone animation variables
@@ -31,12 +35,15 @@ let rightShoulderBone = null;
 let leftShoulderBone = null;
 let rightHandBone = null;
 let leftHandBone = null;
+// Store explicit wrist/middle bones for midpoint calculation
+let leftHandWristBone = null;
+let leftHandMiddleBone = null;
 let rightHandBase = { x: 0, y: 0, z: 0 };
 let leftHandBase = { x: 0, y: 0, z: 0 };
 
 function _shouldSwapSidesByCamera(rightBone, leftBone) {
+
     try {
-        const handArcSegments = [];
         if (!rightBone || !leftBone || !camera) return false;
         const r = new THREE.Vector3();
         const l = new THREE.Vector3();
@@ -1142,7 +1149,12 @@ function wireUI() {
       const fallback = ['333', '555', '777'][Math.floor(Math.random() * 3)]; // no 1/2
       if (input) input.value = fallback;
       markInputInvalid(false);
-      try { applySiteswapString(fallback); createBallMeshes(); } catch (e) { console.warn('Fallback apply failed', e); }
+      try { 
+        applySiteswapString(fallback); 
+        clearAllArches();
+        resetEngine();
+        createBallMeshes(); 
+      } catch (e) { console.warn('Fallback apply failed', e); }
       console.warn('Random generator failed to produce a working pattern; used fallback:', fallback);
     }
   });
@@ -1166,26 +1178,45 @@ function wireUI() {
     }
 
     // Save button now acts as Apply (and also saves)
+    const doSave = () => {
+        if (!validateInput()) {
+            // keep focus on input so user can fix it
+            if (input) input.focus();
+            console.log('Attempted to apply invalid siteswap');
+            return;
+        }
+        const s = (input && input.value.trim()) || '';
+        if (!s) return;
+        
+        // Clear all arches before applying new siteswap
+        clearAllArches();
+        
+        const ok = applySiteswapString(s);
+        if (ok) {
+            // Reset engine to beat 0 after applying new siteswap
+            resetEngine();
+            
+            localStorage.setItem('siteswap_saved', s);
+            createBallMeshes();
+            console.log('Siteswap applied and saved:', s);
+        } else {
+            // applySiteswapString may fail dwell-aware check — mark invalid and show message
+            markInputInvalid(true, 'Rejected by engine (dwell/conflict)');
+            console.log('Siteswap apply failed');
+        }
+    };
+
     const save = Array.from(document.querySelectorAll('.btn.secondary, .SaveBtn')).find(el => /save/i.test(el.textContent));
     if (save) {
-        save.addEventListener('click', () => {
-            if (!validateInput()) {
-                // keep focus on input so user can fix it
-                if (input) input.focus();
-                console.log('Attempted to apply invalid siteswap');
-                return;
-            }
-            const s = (input && input.value.trim()) || '';
-            if (!s) return;
-            const ok = applySiteswapString(s);
-            if (ok) {
-                localStorage.setItem('siteswap_saved', s);
-                createBallMeshes();
-                console.log('Siteswap applied and saved:', s);
-            } else {
-                // applySiteswapString may fail dwell-aware check — mark invalid and show message
-                markInputInvalid(true, 'Rejected by engine (dwell/conflict)');
-                console.log('Siteswap apply failed');
+        save.addEventListener('click', doSave);
+    }
+
+    // Enter key in input field does same as Save button
+    if (input) {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                doSave();
             }
         });
     }
@@ -1255,66 +1286,111 @@ applySpeed();
         });
     }
 
-    // --- Trajectories toggle under the speed slider ---
+    // --- Settings table (Scene Settings) ---
+    let settingsTableBody = null;
+    function ensureSettingsTable() {
+        if (settingsTableBody) return settingsTableBody;
+        try {
+            const controlPanel = document.querySelector('.control-panel');
+            if (!controlPanel) return null;
+            const box = document.createElement('div');
+            box.className = 'rounded-box';
+            const title = document.createElement('p');
+            title.textContent = 'Scene Settings';
+            const wrap = document.createElement('div');
+            wrap.className = 'table-wrap';
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            thead.innerHTML = '<tr><th>Setting</th><th>Value</th></tr>';
+            const tbody = document.createElement('tbody');
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            wrap.appendChild(table);
+            box.appendChild(title);
+            box.appendChild(wrap);
+            controlPanel.appendChild(box);
+            settingsTableBody = tbody;
+            return settingsTableBody;
+        } catch (e) {
+            console.warn('Failed to create settings table', e);
+            return null;
+        }
+    }
+
+    // --- Trajectories toggle (table row) ---
     (function addTrajectoriesToggleBelowSpeed() {
         try {
-            // wrapper to keep spacing consistent
-            const wrapper = document.createElement('div');
-            wrapper.style.cssText = 'margin-top:8px;display:flex;flex-direction:column;gap:8px;font-size:13px';
+            const tbody = ensureSettingsTable();
+            if (!tbody) return;
 
-            // Trajectories toggle
-            const trajDiv = document.createElement('div');
-            trajDiv.style.cssText = 'display:flex;align-items:center;gap:8px;';
-            
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.id = 'showTrajectoriesCheckbox';
-            cb.checked = (typeof trajectoriesVisible !== 'undefined') ? !!trajectoriesVisible : true;
+            cb.checked = false;
             cb.addEventListener('change', (e) => setTrajectoriesVisible(!!e.target.checked));
 
-            const lbl = document.createElement('label');
-            lbl.htmlFor = 'showTrajectoriesCheckbox';
-            lbl.style.cssText = 'cursor:pointer;user-select:none';
-            lbl.textContent = 'Show Trajectories';
-
-            trajDiv.appendChild(cb);
-            trajDiv.appendChild(lbl);
-            wrapper.appendChild(trajDiv);
-
-            // All Possible Carry Arcs toggle
-            const carryDiv = document.createElement('div');
-            carryDiv.style.cssText = 'display:flex;align-items:center;gap:8px;';
-            
-            const carryCb = document.createElement('input');
-            carryCb.type = 'checkbox';
-            carryCb.id = 'showAllCarryArcsCheckbox';
-            carryCb.checked = false;
-            carryCb.addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    drawAllPossibleCarryArcs();
-                } else {
-                    clearAllPossibleCarryArcs();
-                }
-            });
-
-            const carryLbl = document.createElement('label');
-            carryLbl.htmlFor = 'showAllCarryArcsCheckbox';
-            carryLbl.style.cssText = 'cursor:pointer;user-select:none';
-            carryLbl.textContent = 'Show All Possible Carry Arcs';
-
-            carryDiv.appendChild(carryCb);
-            carryDiv.appendChild(carryLbl);
-            wrapper.appendChild(carryDiv);
-
-            // Insert the wrapper directly after the speed element if possible
-            const parent = speed.parentElement || document.body;
-            if (parent && parent.contains(speed)) {
-                parent.insertBefore(wrapper, speed.nextSibling);
-            } else {
-                parent.appendChild(wrapper);
-            }
+            const tr = document.createElement('tr');
+            const nameTd = document.createElement('td');
+            nameTd.textContent = 'Trajectories';
+            const valueTd = document.createElement('td');
+            valueTd.appendChild(cb);
+            tr.appendChild(nameTd);
+            tr.appendChild(valueTd);
+            tbody.appendChild(tr);
         } catch (e) {
             console.warn('Failed to add trajectories toggle below speed slider', e);
+        }
+    })();
+
+   
+
+    // --- Tent visibility toggle (table row) ---
+    (function addTentToggle() {
+        try {
+            const tbody = ensureSettingsTable();
+            if (!tbody) return;
+
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.id = 'showTentCheckbox';
+            cb.checked = !tentVisible; // Hide Tent: unchecked means visible
+            cb.addEventListener('change', (e) => setTentVisible(!e.target.checked));
+
+            const tr = document.createElement('tr');
+            const nameTd = document.createElement('td');
+            nameTd.textContent = 'Hide Tent';
+            const valueTd = document.createElement('td');
+            valueTd.appendChild(cb);
+            tr.appendChild(nameTd);
+            tr.appendChild(valueTd);
+            tbody.appendChild(tr);
+        } catch (e) {
+            console.warn('Failed to add tent toggle', e);
+        }
+    })();
+
+    // --- Back Wall visibility toggle (table row) ---
+    (function addBackWallToggle() {
+        try {
+            const tbody = ensureSettingsTable();
+            if (!tbody) return;
+
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.id = 'showBackWallCheckbox';
+            cb.checked = backWallVisible;
+            cb.addEventListener('change', (e) => setBackWallVisible(!!e.target.checked));
+
+            const tr = document.createElement('tr');
+            const nameTd = document.createElement('td');
+            nameTd.textContent = 'Show Back Wall';
+            const valueTd = document.createElement('td');
+            valueTd.appendChild(cb);
+            tr.appendChild(nameTd);
+            tr.appendChild(valueTd);
+            tbody.appendChild(tr);
+        } catch (e) {
+            console.warn('Failed to add back wall toggle', e);
         }
     })();
 
@@ -1325,7 +1401,8 @@ applySpeed();
             if (!controlPanel) return;
 
             const armSection = document.createElement('div');
-            armSection.style.cssText = 'margin-top:16px;padding:12px;background:#f0f0f0;border-radius:6px;';
+            armSection.id = 'armControlSection';
+            armSection.style.cssText = 'margin-top:16px;padding:12px;background:#f0f0f0;border-radius:6px;display:none;'; // hidden by default
 
             const title = document.createElement('div');
             title.style.cssText = 'font-weight:600;font-size:13px;margin-bottom:10px;color:#333;';
@@ -1580,18 +1657,35 @@ if (viewSelector) {
 
         const select = document.createElement('select');
         select.id = 'characterSelector';
-        select.style.cssText = 'padding:4px 8px;border-radius:4px;background:#333;color:#fff;border:1px solid #555;cursor:pointer';
+        select.style.cssText = 'padding:4px 8px;border-radius:4px;background:#333;color:#fff;border:1px solid #000000ff;cursor:pointer';
         
+        const ninjaOption = document.createElement('option');
+        ninjaOption.value = 'Ninja';
+        ninjaOption.textContent = 'Ninja';
+        select.appendChild(ninjaOption);
+
+        const abeOption = document.createElement('option');
+        abeOption.value = 'Abe';
+        abeOption.textContent = 'Abe';
+        select.appendChild(abeOption);
+
+        const clownOption = document.createElement('option');
+        clownOption.value = 'Clown';
+        clownOption.textContent = 'Clown';
+        select.appendChild(clownOption);
+
         const dummyOption = document.createElement('option');
         dummyOption.value = 'Dummy';
         dummyOption.textContent = 'Dummy';
         dummyOption.selected = true;
         select.appendChild(dummyOption);
 
-        const clownOption = document.createElement('option');
-        clownOption.value = 'Clown';
-        clownOption.textContent = 'Clown';
-        select.appendChild(clownOption);
+
+        const erikaOption = document.createElement('option');
+        erikaOption.value = 'Erika';
+        erikaOption.textContent = 'Erika';
+        select.appendChild(erikaOption);
+        select.appendChild(erikaOption);
 
         select.addEventListener('change', (e) => {
             loadCharacter(e.target.value);

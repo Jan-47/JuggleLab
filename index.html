@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JUGGLR</title>
+    <title>Juggle Lab</title>
     <style>
         * { box-sizing: border-box; }
+        :root {
+          --drawer-width: 280px;
+          --drawer-gap: 10px;
+        }
 
-        /* make the page fill the viewport and allow flexible layout */
         html, body { height: 100%; margin: 0; padding: 0; }
         body {
             display: flex;
@@ -17,32 +20,47 @@
             color: #0b2135;
         }
 
-        /* layout */
         .header { height: 0; background: #e3e8ee; }
         h1 { text-align: center; color: #1976d2; margin: 12px 0; font-size: 28px; font-weight: 700; letter-spacing: 0.5px; }
-        .main-content { /* fill remaining space under the header/title */
+        .main-content { 
             flex: 1;
             display: flex;
             gap: 0;
             align-items: stretch;
-            min-height: 0; /* allow children to scroll correctly */
+            min-height: 0; 
         }
 
-        /* left / center / right columns */
-        .learn-more { width: 13%; background: #e3e8ee; padding: 20px; box-sizing: border-box; overflow: auto; }
-        .animation-panel { flex: 1; background: #f5f8fa; position: relative; display: flex; align-items: stretch; justify-content: center; padding: 0; min-height: 0; }
+        .animation-panel { flex: 1; background: #f5f8fa; position: relative; display: flex; align-items: stretch; justify-content: center; padding: 0; min-height: 0; overflow: hidden; }
         .control-panel { width: 13%; background: #e3e8ee; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; align-items: stretch; justify-content: flex-start; overflow: auto; }
 
-        /* canvas */
-        #threejs-canvas { width: 100%; height: 100%; display: block; border-radius: 8px; background: transparent; box-shadow: 0 2px 12px rgba(0,0,0,.1); }
+        #left-drawer-btn, #right-drawer-btn {
+          position: absolute;
+          z-index: 40;
+          top: 10px;
+          border: none;
+          border-radius: 8px;
+          width: 40px;
+          height: 40px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #1976d2;
+          color: #fff;
+          box-shadow: 0 2px 6px rgba(0,0,0,.25);
+          cursor: pointer;
+          transition: left .25s ease;
+        }
+        #left-drawer-btn { left: var(--drawer-gap); }
+        #right-drawer-btn { right: 10px; display: none; }
 
-        /* overlay controls on canvas */
-        .controls { position: absolute; left: 50%; transform: translateX(-50%); bottom: 12px; background: rgba(255,255,255,0.95); border-radius: 8px; padding: 10px 14px; display: flex; gap: 10px; align-items: center; box-shadow: 0 4px 16px rgba(0,0,0,.15); backdrop-filter: blur(8px); }
-        .previous-throw-button, .toggle-pause-button, .next-throw-button { padding: 8px 14px; background-color: #1976d2; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(25,118,210,.25); }
-        .previous-throw-button:hover, .toggle-pause-button:hover, .next-throw-button:hover { background-color: #0d47a1; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(25,118,210,.35); }
-        .previous-throw-button:active, .toggle-pause-button:active, .next-throw-button:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(25,118,210,.25); }
+        #threejs-canvas { width: 100%; height: 100%; display: block; background: transparent; box-shadow: 0 2px 12px rgba(0,0,0,.1); }
 
-        /* fullscreen buttons anchored to canvas top-right */
+        .controls { position: absolute; left: 50%; transform: translateX(-50%); bottom: 12px; background: rgba(255,255,255,0.95); border-radius: 8px; padding: 10px 14px; display: flex; gap: 10px; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,.15); backdrop-filter: blur(8px); }
+        .previous-throw-button, .toggle-pause-button, .next-throw-button { padding: 8px 12px; border: 1px solid #1976d2; border-radius: 6px; background-color: #1976d2; color: #fff; font-size: 14px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+        .previous-throw-button:hover, .toggle-pause-button:hover, .next-throw-button:hover { background-color: #0d47a1; border-color: #0d47a1; box-shadow: 0 2px 8px rgba(25,118,210,.2); }
+        .previous-throw-button:active, .toggle-pause-button:active, .next-throw-button:active { box-shadow: 0 1px 3px rgba(25,118,210,.25); }
+
+
         #fullscreen-btn, #exit-fullscreen-btn {
           position: absolute;
           right: 6px;
@@ -73,22 +91,21 @@
         .ViewSelector:hover { border-color: #1976d2; box-shadow: 0 2px 8px rgba(25,118,210,.2); }
         .ViewSelector:focus { outline: none; border-color: #1976d2; box-shadow: 0 0 0 3px rgba(25,118,210,.15); }
 
-        /* right panel: make everything full-width and tidy */
         .control-panel input[type="text"].siteswapinput { width: 100%; padding: 10px 14px; border-radius: 6px; border: 1px solid #cfe0f2; background: #fff; font-size: 14px; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
         .control-panel input[type="text"].siteswapinput:focus { outline: none; border-color: #1976d2; box-shadow: 0 0 0 3px rgba(25,118,210,.15); }
         .control-panel .RandomButton, .control-panel #RandomButton { width: 100%; padding: 10px 14px; background-color: #1976d2; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(25,118,210,.25); }
         .control-panel .RandomButton:hover { background-color: #0d47a1; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(25,118,210,.35); }
         .control-panel .RandomButton:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(25,118,210,.25); }
 
-        /* speed slider */
         .speed-group { width: 100%; display:flex; flex-direction:column; gap:8px; align-items:stretch; }
-        .speed-group label { font-size: 13px; color: #0b2135; margin-left:2px; font-weight: 500; }
-        .speed-slider { width: 100%; -webkit-appearance: none; height: 6px; border-radius: 6px; background: linear-gradient(90deg,#1976d2,#0d47a1); outline: none; }
+        .speed-group label { font-size: 13px; color: #0b2135; margin-left:2px; font-weight: bold; }
+        .speed-group .label-value-row { display: flex; justify-content: space-between; align-items: center; }
+        .speed-slider { width: 100%; -webkit-pappearance: none; height: 6px; border-radius: 6px; background: linear-gradient(90deg,#1976d2,#0d47a1); outline: none; }
         .speed-value { font-size: 13px; color:#0b2135; text-align:right; }
 
-        /* Nicer sliders: speed + random "Max Throw" */
         #speed.speed-slider,
-        #randMaxThrow {
+        #randMaxThrow,
+        #trailLengthSlider {
           appearance: none;
           -webkit-appearance: none;
           width: 100%;
@@ -98,29 +115,32 @@
           border: 1px solid #cfe0f2;
           outline: none;
           box-shadow: inset 0 1px 2px rgba(0,0,0,.12);
-          accent-color: #1976d2; /* consistent color hint where supported */
+          accent-color: #1976d2; 
           transition: box-shadow .15s ease, border-color .15s ease;
         }
         #speed.speed-slider:hover,
-        #randMaxThrow:hover {
+        #randMaxThrow:hover,
+        #trailLengthSlider:hover {
           border-color: #b7cce8;
           box-shadow: inset 0 1px 2px rgba(0,0,0,.12), 0 0 0 3px rgba(25,118,210,.08);
         }
         #speed.speed-slider:focus,
-        #randMaxThrow:focus {
+        #randMaxThrow:focus,
+        #trailLengthSlider:focus {
           border-color: #1976d2;
           box-shadow: inset 0 1px 2px rgba(0,0,0,.12), 0 0 0 4px rgba(25,118,210,.15);
         }
 
-        /* Chrome/Edge */
         #speed.speed-slider::-webkit-slider-runnable-track,
-        #randMaxThrow::-webkit-slider-runnable-track {
+        #randMaxThrow::-webkit-slider-runnable-track,
+        #trailLengthSlider::-webkit-slider-runnable-track {
           height: 8px;
           border-radius: 999px;
           background: transparent;
         }
         #speed.speed-slider::-webkit-slider-thumb,
-        #randMaxThrow::-webkit-slider-thumb {
+        #randMaxThrow::-webkit-slider-thumb,
+        #trailLengthSlider::-webkit-slider-thumb {
           -webkit-appearance: none;
           width: 18px;
           height: 18px;
@@ -128,51 +148,23 @@
           background: #fff;
           border: 2px solid #1976d2;
           box-shadow: 0 2px 6px rgba(13,71,161,.25);
-          margin-top: -5px; /* centers on 8px track */
+          margin-top: -5px; 
           transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
         }
         #speed.speed-slider::-webkit-slider-thumb:hover,
-        #randMaxThrow::-webkit-slider-thumb:hover {
+        #randMaxThrow::-webkit-slider-thumb:hover,
+        #trailLengthSlider::-webkit-slider-thumb:hover {
           transform: scale(1.05);
           border-color: #0d47a1;
         }
         #speed.speed-slider:active::-webkit-slider-thumb,
-        #randMaxThrow:active::-webkit-slider-thumb {
+        #randMaxThrow:active::-webkit-slider-thumb,
+        #trailLengthSlider:active::-webkit-slider-thumb {
           transform: scale(0.98);
           box-shadow: 0 1px 4px rgba(13,71,161,.25);
         }
 
-        /* Firefox */
-        #speed.speed-slider::-moz-range-track,
-        #randMaxThrow::-moz-range-track {
-          height: 8px;
-          border-radius: 999px;
-          background: linear-gradient(180deg, #f0f5fb, #e1ecf7);
-          border: 1px solid #cfe0f2;
-        }
-        #speed.speed-slider::-moz-range-thumb,
-        #randMaxThrow::-moz-range-thumb {
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: #fff;
-          border: 2px solid #1976d2;
-          box-shadow: 0 2px 6px rgba(13,71,161,.25);
-          transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
-        }
-        #speed.speed-slider::-moz-range-thumb:hover,
-        #randMaxThrow::-moz-range-thumb:hover {
-          transform: scale(1.05);
-          border-color: #0d47a1;
-        }
-        #speed.speed-slider:active::-moz-range-thumb,
-        #randMaxThrow:active::-moz-range-thumb {
-          transform: scale(0.98);
-          box-shadow: 0 1px 4px rgba(13,71,161,.25);
-        }
-
-        /* Slightly tighten the speed label/value row */
-        #speedValue.speed-value {
+        .speed-value {
           font-variant-numeric: tabular-nums;
           background: #fff;
           border: 1px solid #dfe7f2;
@@ -182,26 +174,32 @@
           box-shadow: 0 1px 0 rgba(0,0,0,.03);
         }
 
-        .rounded-box { width: 100%; background: #fff; border-radius: 8px; padding: 14px; box-sizing: border-box; box-shadow: 0 2px 8px rgba(0,0,0,.08); border: 1px solid #e8eef5; }
+        .rounded-box { width: 100%; background: #fff; border-radius: 8px; padding: 10px; box-sizing: border-box; box-shadow: 0 2px 8px rgba(0,0,0,.08); border: 1px solid #e8eef5; }
         .rounded-box p { margin: 0 0 12px 0; color: #1976d2; font-weight: 600; font-size: 14px; }
 
-        /* make the table responsive and compact */
         .rounded-box .table-wrap { width: 100%; overflow-x: auto; }
         .rounded-box table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .rounded-box th, .rounded-box td { padding: 8px; text-align: center; }
+        .rounded-box th, .rounded-box td { padding: 2px 1px; text-align: center; font-size: 12px; }
         .rounded-box th { background: #f5f8fa; color: #0b2135; font-weight: 600; border-bottom: 2px solid #e8eef5; }
-        .rounded-box input[type="color"] { width: 40px; height: 28px; border: 1px solid #cfe0f2; padding: 2px; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; }
-        .rounded-box input[type="color"]:hover { border-color: #1976d2; box-shadow: 0 0 0 3px rgba(25,118,210,.1); }
+        .rounded-box input[type="color"] { 
+            width: 30px; 
+            height: 20px; 
+            border: none; 
+            padding: 0; 
+            border-radius: 3px; 
+            cursor: pointer; 
+        }
+        .rounded-box input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        .rounded-box input[type="color"]::-webkit-color-swatch { border: none; border-radius: 3px; }
+        .rounded-box input[type="color"]::-moz-color-swatch { border: none; border-radius: 3px; }
         .rounded-box input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #1976d2; }
 
-        /* prop selector (applies to all props) */
         .prop-row { margin-top: 8px; display:flex; flex-direction:column; gap:6px; }
         .prop-row label { font-size: 13px; color:#0b2135; font-weight: 500; }
         .prop-select { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #cfe0f2; background: #fff; font-size: 14px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
         .prop-select:hover { border-color: #1976d2; }
         .prop-select:focus { outline: none; border-color: #1976d2; box-shadow: 0 0 0 3px rgba(25,118,210,.15); }
 
-        /* full-width action buttons */
         .ResetBtn, .SaveBtn { width: 100%; padding: 10px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s ease; }
         .ResetBtn { background-color: #e53935; color: #fff; box-shadow: 0 2px 6px rgba(229,57,53,.25); }
         .ResetBtn:hover { background-color: #b71c1c; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(229,57,53,.35); }
@@ -210,19 +208,11 @@
         .SaveBtn:hover { background-color: #0d47a1; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(25,118,210,.35); }
         .SaveBtn:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(25,118,210,.25); }
 
-        /* align small groups inside right panel */
         .siteswap-group { display: flex; flex-direction: column; gap: 8px; width: 100%; }
         .siteswap-group .row { display: flex; gap: 8px; width: 100%; }
         .siteswap-group .row > * { flex: 1; }
 
-        /* left links */
-        .learn-more h3 { margin-top: 0; color: #1976d2; font-size: 16px; }
-        .links { color: #1976d2; text-decoration: none; display: block; margin: 6px 0; font-size: 13px; padding: 6px 8px; border-radius: 4px; transition: all 0.2s ease; }
-        .links:hover { color: #0d47a1; background: rgba(25,118,210,.08); text-decoration: none; }
-
-        /* Make the Random "Max Throw" slider match Speed slider width */
         .siteswap-group #RandomButton + div {
-          /* override the inline styles JS adds */
           display: grid !important;
           grid-template-columns: 1fr auto;
           grid-template-rows: auto auto;
@@ -234,7 +224,6 @@
           font-size: 12px;
         }
 
-        /* Label on the left, value badge on the right (row 1) */
         .siteswap-group #RandomButton + div > label {
           grid-column: 1;
           grid-row: 1;
@@ -243,7 +232,6 @@
           margin: 0;
         }
 
-        /* The numeric value badge (row 1, right) */
         #randMaxThrowValue {
           grid-column: 2;
           grid-row: 1;
@@ -254,199 +242,99 @@
           padding: 2px 8px;
         }
 
-        /* Slider spans full width on row 2 */
         #randMaxThrow {
           grid-column: 1 / span 2;
           grid-row: 2;
-          width: 100% !important;   /* override the inline 120px width from JS */
+          width: 100% !important;  
         }
 
-        /* responsive */
-        @media (max-width: 1000px) {
-            .learn-more { display: none; }
-            .control-panel { display: none; }
-            .animation-panel { width: 100%; }
-            .main-content { height: 50vh; } /* fallback for small screens */
-        }
 
-        /* Mobile-first improvements */
-        @media (max-width: 768px) {
-          /* Use full viewport for the animation; collapse side columns */
-          .main-content {
-            flex-direction: column;
-            height: 100%;
-          }
-          .learn-more,
-          .control-panel {
-            display: none !important;
-          }
-          .animation-panel {
-            width: 100%;
-            height: 100vh;              /* full device height */
-            min-height: 100vh;
-            padding: 0;
-          }
-
-          /* Canvas fills panel */
-          #threejs-canvas {
-            width: 100% !important;
-            height: 100% !important;
-            border-radius: 0;
-          }
-
-          /* Reposition controls: top bar, spaced, bigger touch targets */
-          .controls {
-            position: absolute;
-            top: 10px;                  /* move to top */
-            bottom: auto;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255,255,255,0.95);
-            border-radius: 10px;
-            padding: 8px 12px;
-            gap: 10px;
-            box-shadow: 0 8px 24px rgba(24,39,75,.12), 0 3px 8px rgba(24,39,75,.06);
-            backdrop-filter: blur(4px);
-          }
-
-          .AnimationButtons,
-          .ViewSelector {
-            font-size: 16px;
-            padding: 10px 12px;
-            border-radius: 8px;
-          }
-          .ViewSelector {
-            max-width: 160px;
-          }
-
-          /* Make any range sliders more finger-friendly */
-          input[type="range"] {
-            height: 12px;
-          }
-          input[type="range"]::-webkit-slider-thumb {
-            width: 22px;
-            height: 22px;
-          }
-          input[type="range"]::-moz-range-thumb {
-            width: 22px;
-            height: 22px;
-          }
-
-          /* Fullscreen button larger and not overlapping controls */
-          #fullscreen-btn {
-            right: 10px;
-            top: 10px;
-            padding: 10px 12px;
-            border-radius: 10px;
-            font-size: 14px;
-            z-index: 20;
-          }
-
-          /* Exit fullscreen helper, appears only while in fullscreen */
-          #exit-fullscreen-btn {
-            right: 10px;
-            top: 58px;
-            padding: 10px 12px;
-            border-radius: 10px;
-            font-size: 14px;
-            z-index: 20;
-            display: none;
-          }
-        }
-
-        /* Ultra-small phones (≤ 380px): stack controls vertically */
-        @media (max-width: 380px) {
-          .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            row-gap: 8px;
-            column-gap: 8px;
-          }
-          .ViewSelector {
-            grid-column: 1 / -1; /* full row */
-            width: 100%;
-          }
-        }
     </style>
 </head>
 <body>
-    <!-- Header Section -->
     <div class="header"></div>
-    <h1>JUGGLR</h1>
 
-    <!-- Main Content -->
     <div class="main-content">
-        <!-- Left Side - Information -->
-         <div class="learn-more">
-            <h3>Learn More</h3>
-            <a class="links" href="#">What is Siteswap?</a>
-            <a class="links" href="#">How to Juggle?</a>
-            <a class="links" href="#">How to make Juggling Balls?</a>
-        </div>
-
-        <!-- Middle - Animation -->
         <div class="animation-panel">
             <canvas id="threejs-canvas"></canvas>
-          <!-- Fullscreen controls anchored to canvas corner -->
             <button id="fullscreen-btn" title="Toggle Fullscreen">⤢</button>
             <button id="exit-fullscreen-btn" title="Exit Fullscreen">⤡</button>
             <div class="controls">
                 <button class="previous-throw-button AnimationButtons">⏮️</button>
-                <button class="toggle-pause-button AnimationButtons">⏯️</button>
+                <button class="toggle-pause-button AnimationButtons">⏸️</button>
                 <button class="next-throw-button AnimationButtons">⏭️</button>
                 <select class="ViewSelector" style="width:auto; margin:0;">
                     <option>Front View</option>
                     <option>Side View</option>
                     <option>POV</option>
                 </select>
+                <select id="characterSelector" style="padding:8px 12px;border-radius:6px;background:#666;color:#fff;border:1px solid #555;font-size:14px;cursor:pointer;transition:all 0.2s ease;box-shadow:0 2px 6px rgba(0,0,0,.3);">
+                    <option value="Ninja" selected>Ninja</option>
+                    <option value="Abe">Abe</option>
+                    <option value="Clown">Clown</option>
+                    <option value="Dummy">Dummy</option>
+                </select>
             </div>
         </div>
-        
-        <!-- Right Side - Controls -->
         <div class="control-panel">
             <div class="siteswap-group">
                 <input type="text" placeholder="e.g. 531" class="siteswapinput" />
+                <div id="correctedNotationMsg" style="margin-top:8px;margin-bottom:8px;font-size:12px;color:#0b2135;display:none;"></div>
+                
                 <button id="RandomButton" class="RandomButton">Random</button>
-
-                <!-- Speed slider under Random button -->
+                <div class="speed-group" aria-label="max throw control">
+                    <div class="label-value-row">
+                        <label for="randMaxThrow">Max Random Throw</label>
+                        <div class="speed-value" id="randMaxThrowValue">9</div>
+                    </div>
+                    <input id="randMaxThrow" class="speed-slider" type="range" min="4" max="9" step="1" value="9" />
+                </div>
                 <div class="speed-group" aria-label="speed control">
-                    <label for="speed">Speed</label>
+                    <div class="label-value-row">
+                        <label for="speed">Speed</label>
+                        <div class="speed-value" id="speedValue">1.00×</div>
+                    </div>
                     <input id="speed" class="speed-slider" type="range" min="0.2" max="2" step="0.1" value="1" />
-                    <div class="speed-value" id="speedValue">1.00×</div>
+                </div>
+                <div class="speed-group" aria-label="trail length control">
+                    <div class="label-value-row">
+                        <label for="trailLengthSlider">Trail Length</label>
+                        <div class="speed-value" id="trailLengthValue">250</div>
+                    </div>
+                    <input id="trailLengthSlider" class="speed-slider" type="range" min="50" max="1500" step="50" value="250" />
                 </div>
             </div>
-
             <div class="rounded-box">
-                <p>Prop Settings</p>
+              <p>Ball Settings</p>
                 <div class="table-wrap">
                     <table>
                         <thead>
                             <tr><th>#</th><th>Color</th><th>Trail</th><th>Show</th></tr>
                         </thead>
-                        <tbody>
+                        <tbody id="ballSettingsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="rounded-box">
+              <p>Scene Settings</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Setting</th><th>Show</th></tr>
+                        </thead>
+                        <tbody id="sceneSettingsTableBody">
                             <tr>
-                                <td>1</td>
-                                <td><input type="color" value="#e53935" /></td>
-                                <td><input type="checkbox" checked /></td>
-                                <td><input type="checkbox" checked /></td>
+                                <td>Trajectories</td>
+                                <td><input type="checkbox" id="showTrajectoriesCheckbox" /></td>
                             </tr>
                             <tr>
-                                <td>2</td>
-                                <td><input type="color" value="#1976d2" /></td>
-                                <td><input type="checkbox" checked /></td>
-                                <td><input type="checkbox" checked /></td>
+                                <td>Tent</td>
+                                <td><input type="checkbox" id="showTentCheckbox" checked /></td>
                             </tr>
                             <tr>
-                                <td>3</td>
-                                <td><input type="color" value="#ffffff" /></td>
-                                <td><input type="checkbox" checked /></td>
-                                <td><input type="checkbox" checked /></td>
-                            </tr>
-                            <tr>
-                                <td>4</td>
-                                <td><input type="color" value="#e3e8ee" /></td>
-                                <td><input type="checkbox" checked /></td>
-                                <td><input type="checkbox" checked /></td>
+                                <td>Debug Mode</td>
+                                <td><input type="checkbox" id="debugModeCheckbox" /></td>
                             </tr>
                         </tbody>
                     </table>
@@ -457,11 +345,30 @@
             <button class="SaveBtn">Save</button>
         </div>
     </div>
-    <!-- load your three.js scene (module) -->
     <script type="module" src="./main.js"></script>
 
     <script>
-        // small UI niceties: show speed value next to slider
+        document.addEventListener('DOMContentLoaded', () => {
+          const animPanel = document.querySelector('.animation-panel');
+          const rightPanel = document.querySelector('.control-panel');
+          if (!animPanel) return;
+
+          if (rightPanel) rightPanel.setAttribute('aria-hidden', 'true');
+          const rightBtn = document.createElement('button');
+          rightBtn.id = 'right-drawer-btn';
+          rightBtn.title = 'Settings';
+          rightBtn.textContent = '⚙';
+          animPanel.appendChild(rightBtn);
+
+          const toggle = (el, force) => {
+            if (!el) return;
+            const willOpen = force === true ? true : (force === false ? false : !el.classList.contains('open'));
+            el.classList.toggle('open', willOpen);
+            el.setAttribute('aria-hidden', willOpen ? 'false' : 'true');
+          };
+
+          if (rightBtn && rightPanel) rightBtn.addEventListener('click', () => toggle(rightPanel));
+        });
         const speedEl = document.getElementById('speed');
         const speedValueEl = document.getElementById('speedValue');
         if (speedEl && speedValueEl) {
@@ -470,17 +377,15 @@
             update();
         }
 
-        // prop select can be used by main.js (read #propType value) to apply to all props
-
         document.addEventListener('fullscreenchange', () => {
           const panel = document.querySelector('.animation-panel');
           const canvas = document.getElementById('threejs-canvas');
-          if (!panel || !canvas || !renderer || !camera || !controls) return;
-
-          const isFs = !!document.fullscreenElement;
+          const renderer = window.renderer;
+          const camera = window.camera;
+          const controls = window.controls;
+          if (!panel || !canvas || !renderer || !camera) return;
 
           const resizeOnce = () => {
-            // Prefer panel size; fall back to canvas client size; guard zeros
             let w = panel.clientWidth || canvas.clientWidth || 1;
             let h = panel.clientHeight || canvas.clientHeight || 1;
             if (w < 1 || h < 1) { w = 1; h = 1; }
@@ -489,58 +394,31 @@
               renderer.setSize(w, h, false);
               camera.aspect = w / Math.max(1, h);
               camera.updateProjectionMatrix();
-              controls.update();
+              if (controls) controls.update();
             } catch (e) {
               console.warn('Resize after fullscreen failed:', e);
             }
           };
 
-          // First pass immediately
           resizeOnce();
-          // Second pass after layout settles
           requestAnimationFrame(resizeOnce);
         });
 
         window.addEventListener('resize', () => {
-          const w = Math.max(1, canvas.clientWidth || window.innerWidth || 1);
-          const h = Math.max(1, canvas.clientHeight || window.innerHeight || 1);
+          const panel = document.querySelector('.animation-panel');
+          const canvas = document.getElementById('threejs-canvas');
+          const renderer = window.renderer;
+          const camera = window.camera;
+          const controls = window.controls;
+          if (!panel || !canvas || !renderer || !camera) return;
+          const w = Math.max(1, panel.clientWidth || canvas.clientWidth || 1);
+          const h = Math.max(1, panel.clientHeight || canvas.clientHeight || 1);
           camera.aspect = w / h;
           camera.updateProjectionMatrix();
           renderer.setSize(w, h, false);
+          if (controls) controls.update();
         });
     </script>
-    <script>
-function setupMobileDrawer() {
-  const btn = document.getElementById('mobile-panels-btn');
-  const drawer = document.getElementById('mobile-drawer');
-  const closeBtn = document.getElementById('drawer-close');
-  const panel = document.querySelector('.animation-panel');
-  if (!btn || !drawer || !panel) return;
-
-  const syncSize = () => {
-    const w = panel.clientWidth || 1;
-    const h = panel.clientHeight || 1;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    controls.update();
-  };
-
-  const open = () => {
-    drawer.classList.add('open');
-    drawer.setAttribute('aria-hidden', 'false');
-    requestAnimationFrame(syncSize);
-  };
-  const close = () => {
-    drawer.classList.remove('open');
-    drawer.setAttribute('aria-hidden', 'true');
-    requestAnimationFrame(syncSize);
-  };
-
-  btn.addEventListener('click', open);
-  closeBtn.addEventListener('click', close);
-}
-
-window.addEventListener('DOMContentLoaded', setupMobileDrawer);
-    </script>
-    <script>
+    
+  </body>
+</html>

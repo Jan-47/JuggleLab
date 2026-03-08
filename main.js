@@ -2071,13 +2071,22 @@ function toggleFullscreenFor(el) {
     const doc = document;
     const isFs = doc.fullscreenElement || doc.webkitFullscreenElement || doc.msFullscreenElement;
     if (!isFs) {
-        if (el.requestFullscreen) el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-        else if (el.msRequestFullscreen) el.msRequestFullscreen();
+        // Try fullscreen, fallback to hiding controls
+        const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+        if (req) {
+            req.call(el).catch(() => {
+                // If fullscreen fails, just hide the control panel
+                document.querySelector('.control-panel').style.display = 'none';
+                document.getElementById('exit-fullscreen-btn').style.display = 'inline-flex';
+            });
+        } else {
+            // No fullscreen API, hide controls
+            document.querySelector('.control-panel').style.display = 'none';
+            document.getElementById('exit-fullscreen-btn').style.display = 'inline-flex';
+        }
     } else {
-        if (doc.exitFullscreen) doc.exitFullscreen();
-        else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
-        else if (doc.msExitFullscreen) doc.msExitFullscreen();
+        const exit = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+        if (exit) exit.call(doc);
     }
 }
 
@@ -2112,10 +2121,17 @@ function update(dt) {
 
     if (exitBtn) {
         exitBtn.addEventListener('click', () => {
+            // Restore control panel first
+            document.querySelector('.control-panel').style.display = '';
+            exitBtn.style.display = 'none';
+            btn.style.display = 'inline-flex';
+            
+            // Then try to exit fullscreen if we're in fullscreen mode
             const doc = document;
-            if (doc.exitFullscreen) doc.exitFullscreen();
-            else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
-            else if (doc.msExitFullscreen) doc.msExitFullscreen();
+            const exit = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+            if (exit && doc.fullscreenElement) {
+                exit.call(doc).catch(() => {});
+            }
         });
     }
     document.addEventListener('fullscreenchange', () => {

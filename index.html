@@ -248,6 +248,269 @@
           width: 100% !important;  
         }
 
+        /* Mobile Portrait Optimization */
+        @media (max-width: 768px) and (orientation: portrait) {
+          .main-content {
+            flex-direction: column;
+          }
+
+          .animation-panel {
+            flex: 1;
+            min-height: 50vh;
+          }
+
+          .control-panel {
+            width: 100%;
+            flex: 1;
+            padding: 12px;
+            gap: 10px;
+            overflow-y: auto;
+            max-height: 50vh;
+          }
+
+          .controls {
+            bottom: 8px;
+            padding: 8px 10px;
+            gap: 8px;
+            flex-wrap: wrap;
+          }
+
+          .previous-throw-button, .toggle-pause-button, .next-throw-button {
+            padding: 8px 12px;
+            font-size: 13px;
+            flex: 1;
+            min-width: 40px;
+          }
+
+          .ViewSelector {
+            padding: 8px 12px;
+            font-size: 13px;
+            flex: 1;
+            min-width: 60px;
+          }
+
+          #characterSelector {
+            padding: 8px 12px;
+            font-size: 13px;
+            flex: 1;
+            min-width: 80px;
+          }
+
+          .control-panel input[type="text"].siteswapinput {
+            padding: 10px 12px;
+            font-size: 14px;
+          }
+
+          .control-panel .RandomButton {
+            padding: 10px 12px;
+            font-size: 14px;
+          }
+
+          .speed-group {
+            gap: 6px;
+          }
+
+          .speed-group label {
+            font-size: 13px;
+            margin-left: 0;
+          }
+
+          .speed-value {
+            font-size: 13px;
+          }
+
+          .rounded-box {
+            padding: 10px;
+            margin-bottom: 8px;
+          }
+
+          .rounded-box p {
+            margin: 6px 0;
+            font-size: 13px;
+            font-weight: 600;
+          }
+
+          .table-wrap {
+            max-height: 120px;
+            overflow-y: auto;
+          }
+
+          table {
+            font-size: 12px;
+          }
+
+          table th, table td {
+            padding: 6px 4px;
+          }
+
+          table input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+          }
+
+          .ResetBtn, .SaveBtn {
+            padding: 10px 12px;
+            font-size: 14px;
+            margin-top: 6px;
+          }
+        }
+
+        /* Mobile Landscape Optimization */
+        @media (max-height: 600px) and (orientation: landscape) {
+          .control-panel {
+            width: 20%;
+            padding: 8px;
+            gap: 6px;
+            font-size: 12px;
+          }
+
+          .control-panel input[type="text"].siteswapinput,
+          .control-panel .RandomButton {
+            padding: 6px 10px;
+            font-size: 12px;
+          }
+
+          .speed-group {
+            gap: 4px;
+          }
+
+          .speed-group label {
+            font-size: 11px;
+            margin-left: 0;
+          }
+
+          .speed-value {
+            font-size: 11px;
+          }
+
+          .speed-slider {
+            height: 4px;
+          }
+
+          .rounded-box {
+            padding: 8px;
+            margin-bottom: 0;
+          }
+
+          .rounded-box p {
+            margin: 4px 0;
+            font-size: 12px;
+          }
+
+          .table-wrap {
+            max-height: 80px;
+            overflow-y: auto;
+          }
+
+          table {
+            font-size: 11px;
+          }
+
+          table th, table td {
+            padding: 3px 4px;
+          }
+
+          table input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+          }
+
+          .ResetBtn, .SaveBtn {
+            padding: 6px 10px;
+            font-size: 12px;
+            margin-top: 4px;
+          }
+
+          .controls {
+            bottom: 6px;
+            padding: 6px 10px;
+            gap: 6px;
+          }
+
+          .previous-throw-button, .toggle-pause-button, .next-throw-button {
+            padding: 6px 10px;
+            font-size: 12px;
+          }
+
+          .ViewSelector {
+            padding: 6px 10px;
+            font-size: 12px;
+          }
+
+          #characterSelector {
+            padding: 6px 10px;
+            font-size: 12px;
+          }
+        }
+
+        /* Extra small landscape screens */
+        @media (max-height: 500px) and (orientation: landscape) {
+          .control-panel {
+            width: 22%;
+            padding: 4px;
+            gap: 4px;
+          }
+
+          .rounded-box {
+            display: none;
+          }
+
+          .control-panel input[type="text"].siteswapinput {
+            padding: 4px 8px;
+            font-size: 11px;
+          }
+
+          .speed-group {
+            gap: 2px;
+          }
+
+          .speed-group label {
+            font-size: 10px;
+          }
+        }
+
+        /* Small phones (320px - 480px) */
+        @media (max-width: 480px) and (orientation: portrait) {
+          .control-panel {
+            max-height: 45vh;
+          }
+
+          .animation-panel {
+            min-height: 55vh;
+          }
+
+          .controls {
+            padding: 6px 8px;
+            gap: 6px;
+          }
+
+          .previous-throw-button, .toggle-pause-button, .next-throw-button {
+            padding: 6px 10px;
+            font-size: 12px;
+          }
+
+          .ViewSelector, #characterSelector {
+            padding: 6px 10px;
+            font-size: 12px;
+          }
+
+          .control-panel input[type="text"].siteswapinput {
+            padding: 8px 10px;
+            font-size: 13px;
+          }
+
+          .rounded-box p {
+            font-size: 12px;
+          }
+
+          table {
+            font-size: 11px;
+          }
+
+          table th, table td {
+            padding: 4px 3px;
+          }
+        }
 
     </style>
 </head>

@@ -483,7 +483,7 @@ scene.add(centerLight);
 
 
 const trajectories = {};
-const pathBase = './trajectories/';
+const pathBase = import.meta.env.BASE_URL + 'trajectories/';
 
 
 function getArchBallPosAt(hand, beat) {

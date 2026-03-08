@@ -2151,4 +2151,4 @@ function update(dt) {
     });
     syncButtons();
 }
-setupFullscreenButton();
+setupFullscreenButton(); 
